@@ -1,0 +1,10 @@
+# python cache
+*.pyc
+__pycache__/
+
+# Ipython cache
+.ipynb_checkpoints/
+
+#data
+data/
+output/
