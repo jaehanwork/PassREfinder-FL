@@ -39,7 +39,7 @@ parser.add_argument('--hidden_size', type=int, default=256, help='size of the hi
 parser.add_argument('--gnn_depth', type=int, default=2, help='depth of the GNN')
 parser.add_argument('--max_lr', type=float, default=0.001, help='maximum learning rate')
 parser.add_argument('--warmup', type=float, default=0.1, help='warmup ratio for learning rate')
-parser.add_argument('--max_epoch', type=int, default=1, help='maximum number of epochs')
+parser.add_argument('--max_epoch', type=int, default=100, help='maximum number of epochs')
 # parser.add_argument('--early_stop', type=int, default=40, help='early stopping epochs')
 parser.add_argument('--device', type=int, default=0, help='GPU ID')
 
