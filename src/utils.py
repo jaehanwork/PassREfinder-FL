@@ -1,49 +1,16 @@
+import os
+import json
 import torch
 
-def save_checkpoint(save_path, model, optimizer, valid_loss):
+def save_model(save_path, model_name, model, training_state=None):
+    state_dict = model.state_dict()
+    
+    torch.save(state_dict, os.path.join(save_path, model_name))
+    with open(os.path.join(save_path, 'training_state.json'), 'w') as f:
+        json.dump(training_state, f)
 
-    if save_path == None:
-        return
+def load_model(load_path, model):
+    state_dict = torch.load(os.path.join(load_path))
     
-    state_dict = {'model_state_dict': model.state_dict(),
-                  'optimizer_state_dict': optimizer.state_dict(),
-                  'valid_loss': valid_loss}
-    
-    torch.save(state_dict, save_path)
-    print(f'Model saved to ==> {save_path}')
-
-def load_checkpoint(load_path, model, optimizer, device):
-
-    if load_path==None:
-        return
-    
-    state_dict = torch.load(load_path, map_location=device)
-    print(f'Model loaded from <== {load_path}') 
-    
-    model.load_state_dict(state_dict['model_state_dict'])
-    optimizer.load_state_dict(state_dict['optimizer_state_dict'])
-    
-    return state_dict['valid_loss']
-
-def save_metrics(save_path, train_loss_list, valid_loss_list, epoch_list):
-
-    if save_path == None:
-        return
-    
-    state_dict = {'train_loss_list': train_loss_list,
-                  'valid_loss_list': valid_loss_list,
-                  'epoch_list': epoch_list}
-    
-    torch.save(state_dict, save_path)
-    print(f'Model saved to ==> {save_path}')
-
-def load_metrics(load_path, device):
-
-    if load_path==None:
-        return
-    
-    state_dict = torch.load(load_path, map_location=device)
-    print(f'Model loaded from <== {load_path}')
-    
-    return state_dict['train_loss_list'], state_dict['valid_loss_list'], state_dict['epoch_list']
-
+    model.load_state_dict(state_dict)
+    return model

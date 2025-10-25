@@ -27,9 +27,9 @@ class Client(object):
         super(Client, self).__init__()
         self.args = args
         self.model = GraphSAGE(args)
-        self.train_loader = train_loader
         self.train_nfeat = train_nfeat
-        self.load_subtensor = load_subtensor
+        self.train_loader = train_loader
+        # self.load_subtensor = load_subtensor
         self.criterion = nn.CrossEntropyLoss()
         self.optimizer = Adam(self.model.parameters(), lr=float(self.args.max_lr))
         self.scheduler = OneCycleLR(self.optimizer, max_lr=args.max_lr, pct_start=args.warmup,
@@ -49,7 +49,7 @@ class Client(object):
         self.model.to(self.args.device)
         self.model.train()
         for input_nodes, edge_sub, blocks in self.train_loader:
-            batch_inputs, batch_labels = self.load_subtensor(*self.train_nfeat, edge_sub, input_nodes, self.args.device)
+            batch_inputs, batch_labels = load_subtensor(*self.train_nfeat, edge_sub, input_nodes, self.args.device)
             blocks = [block.int().to(self.args.device) for block in blocks]
 
             batch_pred, attn = self.model(edge_sub, blocks, *batch_inputs)

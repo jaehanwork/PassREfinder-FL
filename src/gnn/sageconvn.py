@@ -19,7 +19,7 @@ class SAGEConvN(nn.Module):
                  norm=None,
                  activation=None):
         super(SAGEConvN, self).__init__()
-        valid_aggre_types = {'mean', 'gcn', 'attn', 'no_neighbor', 'no_hidden'}
+        valid_aggre_types = {'mean', 'gcn', 'attn', 'no_neighbor', 'no_hidden', 'gat'}
         if aggregator_type not in valid_aggre_types:
             raise DGLError(
                 'Invalid aggregator_type. Must be one of {}. '
@@ -45,7 +45,7 @@ class SAGEConvN(nn.Module):
             self.attn_r_r = nn.Linear(out_feats, 1, bias=False)
             self.leaky_relu = nn.LeakyReLU(0.2)
             self.fc_neigh = nn.Linear(out_feats, out_feats)
-        elif aggregator_type == 'no_hidden':
+        elif aggregator_type == 'no_hidden' or aggregator_type == 'gat':
             self.fc_manual_r = nn.Linear(self._in_src_feats, out_feats, bias=False)
             self.attn_l_r = nn.Linear(out_feats, 1, bias=False)
             self.attn_r_r = nn.Linear(out_feats, 1, bias=False)
@@ -55,7 +55,8 @@ class SAGEConvN(nn.Module):
             self.leaky_relu = nn.LeakyReLU(0.2)
             self.fc_neigh = nn.Linear(self._in_src_feats, out_feats)
         else:
-            self.fc_neigh = nn.Linear(self._in_src_feats*2, out_feats, bias=False)
+            self.leaky_relu = nn.LeakyReLU(0.2)
+            self.fc_neigh = nn.Linear(self._in_src_feats, out_feats, bias=False)
         if bias:
             self.bias = nn.parameter.Parameter(torch.zeros(self._out_feats))
         else:
@@ -83,7 +84,7 @@ class SAGEConvN(nn.Module):
             nn.init.xavier_uniform_(self.fc_manual_r.weight, gain=gain)
             nn.init.xavier_uniform_(self.attn_l_r.weight, gain=gain)
             nn.init.xavier_uniform_(self.attn_r_r.weight, gain=gain)
-        if self._aggre_type == 'no_hidden':
+        if self._aggre_type == 'no_hidden' or self._aggre_type == 'gat':
             nn.init.xavier_uniform_(self.fc_manual_r.weight, gain=gain)
             nn.init.xavier_uniform_(self.attn_l_r.weight, gain=gain)
             nn.init.xavier_uniform_(self.attn_r_r.weight, gain=gain)
@@ -163,10 +164,7 @@ class SAGEConvN(nn.Module):
             if self._aggre_type == 'mean':
                 graph.srcdata['h'] = feat_src
 
-                graph.multi_update_all(
-                    {'user': (msg_fn_ori, fn.mean('m', 'neigh')),
-                     'reuse': (msg_fn_ori, fn.mean('m', 'neigh'))},
-                concat)
+                graph.update_all(msg_fn_ori, fn.mean('m', 'neigh'), etype='reuse')
                 h_neigh = graph.dstdata['neigh']
                 h_neigh = self.fc_neigh(h_neigh)
             elif self._aggre_type == 'attn':
@@ -198,7 +196,7 @@ class SAGEConvN(nn.Module):
                                         'mean')
                 h_neigh = graph.dstdata['neigh']
                 h_neigh = self.fc_neigh(h_neigh)
-            elif self._aggre_type == 'no_hidden':
+            elif self._aggre_type == 'no_hidden' or self._aggre_type == 'gat':
                 h_src_r = self.fc_manual_r(feat_src)
                 h_dst_r = self.fc_manual_r(feat_dst)
                 
@@ -208,21 +206,18 @@ class SAGEConvN(nn.Module):
                 graph.srcdata.update({'ft_r': h_src_r, 'el_r': el_r})
                 graph.dstdata.update({'er_r': er_r})
 
-                graph.apply_edges(fn.u_add_v('el_r', 'er_r', 'e_r'))
-                e_r = self.leaky_relu(graph.edata.pop('e_r'))
+                graph.apply_edges(fn.u_add_v('el_r', 'er_r', 'e_r'), etype='reuse')
+                e_r = self.leaky_relu(graph.edata.pop('e_r')[('website', 'reuse', 'website')])
 
-                graph.edata['a_r'] = edge_softmax(graph, e_r)
+                graph.edata['a_r'] = {('website', 'reuse', 'website'): edge_softmax(graph['reuse'], e_r)}
                 
-                graph.update_all(fn.u_mul_e('ft_r', 'a_r', 'm_r'), fn.sum('m_r', 'neigh'))
+                graph.update_all(fn.u_mul_e('ft_r', 'a_r', 'm_r'), fn.sum('m_r', 'neigh'), etype='reuse')
                 h_neigh = graph.dstdata['neigh']
                 h_neigh = F.normalize(self.leaky_relu(self.fc_neigh(h_neigh)))
             elif self._aggre_type == 'no_neighbor':
                 graph.srcdata['h'] = feat_src
 
-                graph.multi_update_all({'user': (fn.copy_src('h', 'm'), fn.mean('m', 'neigh')),
-                                        'reuse': (fn.copy_src('h', 'm'), fn.mean('m', 'neigh'))
-                                        },
-                                        'mean')
+                graph.update_all(fn.copy_u('h', 'm'), fn.mean('m', 'neigh'), etype='reuse')
                 h_neigh = graph.dstdata['neigh']
                 h_neigh = F.normalize(self.leaky_relu(self.fc_neigh(h_neigh)))
             elif self._aggre_type == 'gcn':
@@ -235,9 +230,9 @@ class SAGEConvN(nn.Module):
                         graph.dstdata['h'] = graph.srcdata['h'][:graph.num_dst_nodes()]
                     else:
                         graph.dstdata['h'] = graph.srcdata['h']
-                graph.update_all(msg_fn, fn.sum('m', 'neigh'))
+                graph.update_all(msg_fn, fn.sum('m', 'neigh'), etype='reuse')
                 # divide in_degrees
-                degs = graph.in_degrees().to(feat_dst)
+                degs = graph.in_degrees(etype='reuse').to(feat_dst)
                 h_neigh = (graph.dstdata['neigh'] + graph.dstdata['h']) / (degs.unsqueeze(-1) + 1)
                 if not lin_before_mp:
                     h_neigh = self.fc_neigh(h_neigh)
@@ -247,7 +242,9 @@ class SAGEConvN(nn.Module):
             # GraphSAGE GCN does not require fc_self.
             if self._aggre_type == 'gcn':
                 rst = h_neigh
-            if self._aggre_type == 'attn':
+            elif self._aggre_type == 'attn':
+                rst = h_neigh
+            elif self._aggre_type == 'gat':
                 rst = h_neigh
             else:
                 rst = self.fc_self(h_self) + h_neigh
