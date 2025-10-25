@@ -4,7 +4,7 @@
 This repository contains the official implementation of [*PassREfinder-FL: Privacy-Preserving Credential Stuffing Risk Prediction via Graph-Based Federated Learning for Representing Password Reuse between Websites*](https://www.sciencedirect.com/science/article/pii/S0957417425036954), accepted at Elsevier Expert Systems with Applications (ESWA) 2025.
 
 ## System Requirements
-- **GPU**: NVIDIA RTX 3090 24G
+- **GPU**: 1x NVIDIA RTX 3090 24G
 - **CUDA**: 12.1
 
 ### Installation
