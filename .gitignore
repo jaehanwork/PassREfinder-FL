@@ -6,6 +6,6 @@ __pycache__/
 .ipynb_checkpoints/
 
 #data
-data/
+data/*.json
 output/
 result/
