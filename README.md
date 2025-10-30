@@ -16,7 +16,7 @@ This repository contains the official implementation of [*PassREfinder-FL: Priva
 2. **Clone the Repository**
    ```bash
    git clone https://github.com/jaehanwork/PassREfinder-FL.git
-   cd MoEvil
+   cd PassREfinder-FL
    ```
 
 3. **Set Up Environment**
@@ -38,15 +38,15 @@ tar -zxvf data/data.tar.gz -C data
 ```
 
 
-<!-- ## 📝 Citation
-
-If you find this work useful for your research, please cite our paper:
+## Citation
 
 ```bibtex
-@inproceedings{moevil2025,
-  title={MoEvil: Poisoning Expert to Compromise the Safety of Mixture-of-Experts LLMs},
-  author={[Author Names]},
-  booktitle={Proceedings of the Annual Computer Security Applications Conference (ACSAC)},
-  year={2025}
+@article{kim2025passrefinder,
+  title={PassREfinder-FL: Privacy-Preserving Credential Stuffing Risk Prediction via Graph-Based Federated Learning for Representing Password Reuse between Websites},
+  author={Kim, Jaehan and Song, Minkyoo and Seo, Minjae and Jin, Youngjin and Shin, Seungwon and Kim, Jinwoo},
+  journal={Expert Systems with Applications},
+  pages={130111},
+  year={2025},
+  publisher={Elsevier}
 }
-``` -->
+```
